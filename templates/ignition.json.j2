@@ -1,0 +1,51 @@
+{
+  "ignition": {
+    "version": "2.0.0",
+    "config": {}
+  },
+  "storage": {
+    "files": [
+      {
+        "filesystem": "root",
+        "path": "/etc/hostname",
+        "mode": 420,
+        "contents": { "source": "data:,{{hcloud.name}}" }
+      },
+      {
+        "path": "/opt/install-k8s",
+        "filesystem": "root",
+        "mode": 320,
+        "contents": {
+          "source": "data:;base64,{{lookup('template', 'init-k8s.sh.j2')|b64encode}}"
+        }
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "name": "installer.service",
+        "enable": true,
+        "contents": "[Unit]\nRequires=network-online.target\nAfter=network-online.target\n[Service]\nType=oneshot\nExecStart=/opt/install-k8s\n[Install]\nWantedBy=multi-user.target\n"
+      },
+      {
+        "name": "kubelet.service",
+        "dropins": [
+          {
+            "name": "20-hcloud.conf",
+            "contents": "[Service]\nEnvironment=\"KUBELET_EXTRA_ARGS=--cloud-provider=external\"\n"
+          }
+        ]
+      }
+    ]
+  },
+  "networkd": {},
+  "passwd": {
+    "users": [
+      {
+        "name": "core",
+        "sshAuthorizedKeys": {{ ssh_keys | json_query('[*].public_key') | to_json }}
+      }
+    ]
+  }
+}
