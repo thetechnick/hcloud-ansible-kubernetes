@@ -31,11 +31,11 @@
 
   - name: SSH Key exists
     hcloud_ssh_key:
-      name: ansible deploy key
-      public_key: "{{ item }}"
+      name: "ansible key {{ item.0 }}"
+      public_key: "{{ item.1 }}"
       state: present
     register: hcloud_ssh_key
-    with_items: "{{ public_keys }}"
+    with_indexed_items: "{{ public_keys }}"
 
   - name: Create server
     hcloud_server:
