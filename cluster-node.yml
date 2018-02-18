@@ -1,0 +1,64 @@
+# Make sure all nodes are running coreos
+---
+- hosts: all
+  gather_facts: false
+  user: root
+  vars:
+    ignition_template: ignition.json.j2
+  tasks:
+  # Checks
+  - name: ssh_public_keys should be defined
+    assert:
+      that:
+        - ssh_public_keys is defined and ssh_public_keys|length > 0
+      msg: "Set the value of 'ssh_public_keys'."
+
+  - name: hcloud_ssh_keys should be defined
+    assert:
+      that:
+        - hcloud_ssh_keys is defined and hcloud_ssh_keys|length > 0
+      msg: "Set the value of 'hcloud_ssh_keys'."
+
+  - name: kubeadm_join_command should be defined
+    assert:
+      that:
+        - kubeadm_join_command is defined and kubeadm_join_command != ''
+      msg: "Set the value of 'kubeadm_join_command'."
+
+  # CoreOS
+  - name: Check if CoreOS is installed
+    script: check-coreos.sh
+    args:
+      creates: /etc/coreos/update.conf
+    register: check_os
+
+  - name: Install CoreOS
+    block:
+    - name: Boot into rescue system
+      hcloud_server:
+        name: "{{ hcloud_name }}"
+        rescue: linux64
+        state: running
+        ssh_keys: "{{ hcloud_ssh_keys }}"
+      connection: local
+
+    - name: Wait for SSH to come up
+      wait_for:
+        host: "{{ hcloud_public_ipv4 }}"
+        port: 22
+        delay: 20
+      connection: local
+
+    - name: Template ignition.json
+      template:
+        src: "{{ ignition_template }}"
+        dest: /root/ignition.json
+      when: check_os.changed
+
+    - name: Install CoreOS
+      shell: |
+        wget https://raw.github.com/coreos/init/master/bin/coreos-install
+        chmod +x coreos-install
+        ./coreos-install -d /dev/sda -i /root/ignition.json
+        reboot
+    when: check_os.changed

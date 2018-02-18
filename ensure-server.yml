@@ -1,0 +1,41 @@
+# Ensures a servers presense
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+  # Checks
+  - name: server_type should be defined
+    assert:
+      that:
+      - server_type is defined and server_type != ''
+      msg: "Set the value of 'server_type'."
+
+  - name: hcloud_ssh_keys should be defined
+    assert:
+      that:
+      - hcloud_ssh_keys is defined and hcloud_ssh_keys|length > 0
+      msg: "Set the value of 'hcloud_ssh_keys'."
+
+  # Start
+  - name: Generate server name
+    set_fact:
+      new_server_name: "node-{{ lookup('password', '/dev/null length=10 chars=ascii_letters') | lower }}"
+    when: node_name is not defined or node_name == ''
+
+  - name: Use given server name
+    set_fact:
+      new_server_name: "{{ node_name | lower }}"
+    when: node_name is defined and node_name != ''
+
+  - name: Ensure server
+    hcloud_server:
+      name: "{{ new_server_name }}"
+      image: debian-9
+      server_type: "{{ server_type }}"
+      ssh_keys: "{{ hcloud_ssh_keys }}"
+      state: running
+    register: hcloud_server
+
+  - name: Wait for SSH to come up
+    wait_for: host={{ hcloud_server.instances[0].public_ipv4 }} port=22 timeout=60

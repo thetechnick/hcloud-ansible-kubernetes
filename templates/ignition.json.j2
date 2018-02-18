@@ -9,7 +9,7 @@
         "filesystem": "root",
         "path": "/etc/hostname",
         "mode": 420,
-        "contents": { "source": "data:,{{hcloud.name}}" }
+        "contents": { "source": "data:,{{hcloud_name}}" }
       },
       {
         "path": "/opt/install-k8s",
@@ -43,8 +43,12 @@
   "passwd": {
     "users": [
       {
+        "name": "root",
+        "sshAuthorizedKeys": {{ ssh_public_keys | to_json }}
+      },
+      {
         "name": "core",
-        "sshAuthorizedKeys": {{ ssh_keys | json_query('[*].public_key') | to_json }}
+        "sshAuthorizedKeys": {{ ssh_public_keys | to_json }}
       }
     ]
   }

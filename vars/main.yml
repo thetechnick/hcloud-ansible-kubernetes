@@ -1,6 +1,0 @@
----
-server_type: cx11
-public_keys:
-- "{{lookup('file', '~/.ssh/id_rsa.pub')}}"
-kubeadm_join_command: ''
-node_name: node5
